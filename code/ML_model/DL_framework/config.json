@@ -1,0 +1,22 @@
+{
+    "model": "DNN(config)",
+    "load_func": "load_point",
+    "dataset_func": "tf_point",
+    "transform": "transform",
+    "train": "train.csv",
+    "val": "test.csv",
+    "shape": [44],
+
+    "layers": [128, 128, 256, 512, 256],
+
+    "batch": 16,
+    "epochs": 50,
+    "optimizer": "adam",
+    "learning_rate": 1e-2,
+    "loss_func": "binary_crossentropy",
+    "metric": "accuracy",
+
+    "output": "output.csv",
+    "restore": false
+
+}
