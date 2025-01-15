@@ -1,6 +1,8 @@
 import numpy as np 
 import matplotlib.pyplot as plt
 
+# python3 SDG_visualization.py
+
 def z_function(x, y):
     return np.sin(5*x) * np.cos(5*y) / 5
 
