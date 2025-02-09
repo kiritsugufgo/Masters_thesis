@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ### Exec code with this command ###
-### mpirun -n 4 python3 MPI_process.py ###
+### mpirun -n 4 python3 SGD_MPI.py ###
 
 
 def regression(my_x, my_m, my_b):
@@ -24,6 +24,7 @@ def SGD_calc(data):
     yhat = regression(x[batch_indices], m, b)
     C = mse(yhat, y[batch_indices])
     C.backward()
+    print(f"Calculated m_grad: {m.grad.item()}, b_grad: {b.grad.item()}, cost: {C.item()}")
     return {'m_grad': m.grad.item(), 'b_grad': b.grad.item(), 'cost': C.item()}
 
 def plot_figure():
@@ -89,7 +90,12 @@ class MPI_PROCESS:
         finished = 0
         m_grad_sum = 0
         b_grad_sum = 0
-        total_cost = 0
+        total_cost = 0      
+        
+        # Initialize m and b
+        m_opt = inputs[0][2].clone().detach()
+        b_opt = inputs[0][3].clone().detach()
+
 
         for worker in range(1, mpi_size):
             if worker > n_processes:
@@ -108,11 +114,7 @@ class MPI_PROCESS:
             requesting_rank = status.Get_source()
 
             m_grad_sum += result['m_grad']
-            # print(f'''m_grad: {result['m_grad']}''')
-            # print(f'''m_grad_sum: {m_grad_sum}''')
             b_grad_sum += result['b_grad']
-            # print(f'''b_grad: {result['b_grad']}''')
-            # print(f'''b_grad_sum: {b_grad_sum}''')
             total_cost += result['cost']
             finished += 1
 
@@ -134,11 +136,17 @@ class MPI_PROCESS:
                 mpi_world.send(data, dest=requesting_rank)
                 sent += 1
 
+            # Update m and b after receiving each batch of gradients
+            m_opt -= inputs[0][4] * result['m_grad']
+            b_opt -= inputs[0][4] * result['b_grad']
+            
+            print(f"Updated m_opt: {m_opt.item()}, b_opt: {b_opt.item()}")
+
         m_grad_avg = m_grad_sum / n_processes
         b_grad_avg = b_grad_sum / n_processes
         avg_cost = total_cost / n_processes
 
-        return m_grad_avg, b_grad_avg, avg_cost
+        return m_grad_avg, b_grad_avg, avg_cost, m_opt, b_opt
 
     def workers(self, func):
         mpi_world = MPI.COMM_WORLD
@@ -179,7 +187,7 @@ def mpi4py_main():
             os.remove(output)
     
     run_mpi = MPI_PROCESS(SGD_calc, inputs, output)
-    m_grad_avg, b_grad_avg, avg_cost = run_mpi()
+    m_grad_avg, b_grad_avg, avg_cost, m_opt, b_opt = run_mpi()
 
     if mpi_master:
         print(f"Average Cost: {avg_cost}")
@@ -188,15 +196,6 @@ def mpi4py_main():
         
         # Get the figure and axis from plot_figure
         fig, ax, indices = plot_figure()
-        
-        # Initialize m and b
-        m_opt = m.clone().detach()
-        b_opt = b.clone().detach()
-        
-        # Accumulate gradients over all rounds
-        for _ in range(rounds):
-            m_opt -= lr * m_grad_avg
-            b_opt -= lr * b_grad_avg
         
         # Plot the optimized line
         fig, ax = plt.subplots()
@@ -213,8 +212,3 @@ def mpi4py_main():
 if __name__ == '__main__':
     mpi4py_main()
     
-    # mpi_world = MPI.COMM_WORLD
-    # mpi_master = (mpi_world.rank == 0)
-    
-    # if mpi_master:
-    #     plot_figure()
