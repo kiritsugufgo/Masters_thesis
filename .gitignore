@@ -22,3 +22,6 @@ output_1.txt
 # Other temporary files
 *.tmp
 *.temp
+ 
+# Exclude all CSV files in the datasets directory
+*.csv
